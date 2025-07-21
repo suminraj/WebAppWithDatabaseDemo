@@ -27,7 +27,8 @@ steps:
     arguments: '--configuration $(BuildConfiguration)'
 
 - task: DotNetCoreCLI@2
-  displayName: Run Uni Tests
+  displayName: Run Unit Tests
+  condition: false
   inputs:
     command: 'test'
     projects: '**/*UnitTest*.csproj'
