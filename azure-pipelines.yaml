@@ -49,7 +49,7 @@ jobs:
   - job: Database
     displayName: Build Database
     pool:
-      vmImage: ubuntu-latest
+      vmImage: 'windows-2019'
 
     steps:
     - task: MSBuild@1
