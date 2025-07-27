@@ -1,49 +1,47 @@
-# ASP.NET Core
-# Build and test ASP.NET Core projects targeting .NET Core.
-# Add steps that run tests, create a NuGet package, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
-
 trigger:
-- none
+  - none
 
-pool:
-  vmImage: ubuntu-latest
+jobs:
+  - job: WebApp
+    displayName: Build Web App
+    pool:
+      vmImage: ubuntu-latest
+    variables:
+      buildConfiguration: Release
+    steps:  # <-- This must be inside the job
+      - task: DotNetCoreCLI@2
+        displayName: Nuget Restore
+        inputs:
+          command: restore
+          projects: '**/WebApp.csproj'
+          feedsToUse: select
 
-variables:
-  buildConfiguration: 'Release'
+      - task: DotNetCoreCLI@2
+        displayName: Build
+        inputs:
+          command: build
+          projects: '**/WebApp.csproj'
+          arguments: '--configuration $(buildConfiguration)'
 
-steps:
-- task: DotNetCoreCLI@2
-  displayName: Nuget Restore
-  inputs:
-    command: 'restore'
-    projects: '**/WebApp.csproj'
-    feedsToUse: 'select'
-- task: DotNetCoreCLI@2
-  displayName: Build
-  inputs:
-    command: 'build'
-    projects: '**/WebApp.csproj'
-    arguments: '--configuration $(BuildConfiguration)'
+      - task: DotNetCoreCLI@2
+        displayName: Run Unit Tests
+        condition: false
+        inputs:
+          command: test
+          projects: '**/*UnitTest*.csproj'
+          arguments: '--configuration $(buildConfiguration)'
+          testRunTitle: Run Unit Tests
 
-- task: DotNetCoreCLI@2
-  displayName: Run Unit Tests
-  condition: false
-  inputs:
-    command: 'test'
-    projects: '**/*UnitTest*.csproj'
-    arguments: '--configuration $(BuildConfiguration)'
-    testRunTitle: 'Run Unit Tests'
-- task: DotNetCoreCLI@2
-  displayName: Publish
-  inputs:
-    command: 'publish'
-    publishWebProjects: true
-    arguments: '--configuration $(BuildConfiguration) --output $(build.artifactstagingdirectory)'
+      - task: DotNetCoreCLI@2
+        displayName: Publish
+        inputs:
+          command: publish
+          publishWebProjects: true
+          arguments: '--configuration $(buildConfiguration) --output $(build.artifactstagingdirectory)'
 
-- task: PublishBuildArtifacts@1
-  displayName: Publish Artifact
-  inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-    ArtifactName: 'drop'
-    publishLocation: 'Container'
+      - task: PublishBuildArtifacts@1
+        displayName: Publish Artifact
+        inputs:
+          PathtoPublish: $(Build.ArtifactStagingDirectory)
+          ArtifactName: drop
+          publishLocation: Container
