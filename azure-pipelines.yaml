@@ -45,3 +45,19 @@ jobs:
           PathtoPublish: $(Build.ArtifactStagingDirectory)
           ArtifactName: drop
           publishLocation: Container
+
+  - job: Database
+    displayName: Build Database
+    pool:
+      vmImage: ubuntu-latest
+
+    steps:
+    - task: MSBuild@1
+      inputs:
+        solution: 'WebApp.Database/WebApp.Database.sqlproj'
+        msbuildArguments: '/p:OutDir=$(Build.ArtifactStagingDirectory)'
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'dacpac'
+        publishLocation: 'Container'
