@@ -1,63 +1,92 @@
 trigger:
   - none
 
-jobs:
-  - job: WebApp
-    displayName: Build Web App
-    pool:
-      vmImage: ubuntu-latest
-    variables:
-      buildConfiguration: Release
-    steps:  # <-- This must be inside the job
-      - task: DotNetCoreCLI@2
-        displayName: Nuget Restore
-        inputs:
-          command: restore
-          projects: '**/WebApp.csproj'
-          feedsToUse: select
+stages:
+  - stage: BuildWebApp
+    displayName: Build Web Application
+    jobs:
+      - job: WebApp
+        displayName: Build Web App
+        pool:
+          vmImage: ubuntu-latest
+        variables:
+          buildConfiguration: Release
+        steps:
+          - task: DotNetCoreCLI@2
+            displayName: Nuget Restore
+            inputs:
+              command: restore
+              projects: '**/WebApp.csproj'
+              feedsToUse: select
 
-      - task: DotNetCoreCLI@2
-        displayName: Build
-        inputs:
-          command: build
-          projects: '**/WebApp.csproj'
-          arguments: '--configuration $(buildConfiguration)'
+          - task: DotNetCoreCLI@2
+            displayName: Build
+            inputs:
+              command: build
+              projects: '**/WebApp.csproj'
+              arguments: '--configuration $(buildConfiguration)'
 
-      - task: DotNetCoreCLI@2
-        displayName: Run Unit Tests
-        condition: false
-        inputs:
-          command: test
-          projects: '**/*UnitTest*.csproj'
-          arguments: '--configuration $(buildConfiguration)'
-          testRunTitle: Run Unit Tests
+          - task: DotNetCoreCLI@2
+            displayName: Run Unit Tests
+            condition: false
+            inputs:
+              command: test
+              projects: '**/*UnitTest*.csproj'
+              arguments: '--configuration $(buildConfiguration)'
+              testRunTitle: Run Unit Tests
 
-      - task: DotNetCoreCLI@2
-        displayName: Publish
-        inputs:
-          command: publish
-          publishWebProjects: true
-          arguments: '--configuration $(buildConfiguration) --output $(build.artifactstagingdirectory)'
+          - task: DotNetCoreCLI@2
+            displayName: Publish
+            inputs:
+              command: publish
+              publishWebProjects: true
+              arguments: '--configuration $(buildConfiguration) --output $(build.artifactstagingdirectory)'
 
-      - task: PublishBuildArtifacts@1
-        displayName: Publish Artifact
-        inputs:
-          PathtoPublish: $(Build.ArtifactStagingDirectory)
-          ArtifactName: drop
-          publishLocation: Container
+          - task: PublishBuildArtifacts@1
+            displayName: Publish Artifact
+            inputs:
+              PathtoPublish: $(Build.ArtifactStagingDirectory)
+              ArtifactName: drop
+              publishLocation: Container
 
-  - job: Database
-    displayName: Build Database
-    pool:
-      vmImage: 'windows-2019'
+  - stage: BuildDatabase
+    displayName: Build Database Project
+    dependsOn: BuildWebApp
+    jobs:
+      - job: Database
+        displayName: Build Database
+        pool:
+          vmImage: 'windows-2019'
+        steps:
+          - task: MSBuild@1
+            inputs:
+              solution: 'WebApp.Database/WebApp.Database.sqlproj'
+              msbuildArguments: '/p:OutDir=$(Build.ArtifactStagingDirectory)'
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'dacpac'
+              publishLocation: 'Container'
 
-    steps:
-    - task: MSBuild@1
-      inputs:
-        solution: 'WebApp.Database/WebApp.Database.sqlproj'
-        msbuildArguments: '/p:OutDir=$(Build.ArtifactStagingDirectory)'
-    - task: PublishBuildArtifacts@1
-      inputs:
-        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-        ArtifactName: 'dacpac'
-        publishLocation: 'Container'
+  - stage: DeployWebApp
+    displayName: Deploy Web App to Azure
+    dependsOn: BuildWebApp
+    jobs:
+      - job: Deploy
+        displayName: Deploy to Azure App Service
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - download: current
+            artifact: drop
+
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: 'Azure subscription 1(6cae5076-4f3a-4e6c-8909-a4b02724f2d6)'
+              appType: 'webApp'
+              appName: 'dntWebApp-alpha'
+              deployToSlotOrASE: true
+              resourceGroupName: 'learn-devops'
+              slotName: 'production'
+              package: '$(System.DefaultWorkingDirectory)/**/*.zip'
+              deploymentMethod: 'auto'
