@@ -88,5 +88,5 @@ stages:
               deployToSlotOrASE: true
               resourceGroupName: 'learn-devops'
               slotName: 'production'
-              package: '$(Pipeline.Workspace)/drop'
+              package: '$(Pipeline.Workspace)/drop/**/*.zip'
               deploymentMethod: 'auto'
