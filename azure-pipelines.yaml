@@ -90,3 +90,27 @@ stages:
               slotName: 'production'
               package: '$(Pipeline.Workspace)/drop/**/*.zip'
               deploymentMethod: 'auto'
+  - stage: DeployDatabase
+    displayName: Deploy Database to Azure SQL
+    dependsOn: BuildDatabase
+    jobs:
+      - job: DeployDb
+        displayName: Deploy DACPAC to Azure SQL
+        pool:
+          vmImage: windows-2019
+        steps:
+          - download: current
+            artifact: dacpac
+          - task: SqlAzureDacpacDeployment@1
+            inputs:
+              azureSubscription: 'Azure subscription 1(6cae5076-4f3a-4e6c-8909-a4b02724f2d6)'
+              AuthenticationType: 'server'
+              ServerName: 'demo-test1.database.windows.net'
+              DatabaseName: 'DemoDB'
+              SqlUsername: 'sumin'
+              SqlPassword: 'Valahala@123'
+              deployType: 'DacpacTask'
+              DeploymentAction: 'Publish'
+              DacpacFile: '$(Pipeline.Workspace)/dacpac/**/*.dacpac'
+              IpDetectionMethod: 'AutoDetect'
+          
